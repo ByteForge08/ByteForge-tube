@@ -1,9 +1,12 @@
 {
   "routes": [
     {
+      "src": "/api/health",
+      "dest": "/api/health.py"
+    },
+    {
       "src": "/api/get_info",
-      "dest": "/api/get_info.py",
-      "methods": ["POST", "GET"]
+      "dest": "/api/get_info.py"
     },
     {
       "src": "/download/video",
