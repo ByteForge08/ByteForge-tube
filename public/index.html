@@ -15,7 +15,8 @@
 
     <div class="container">
         <input type="text" id="urlInput" placeholder="Cole o link do YouTube aqui..." 
-               value="https://www.youtube.com/watch?v=uIuSv7NU2KU" autocomplete="off">
+               value="https://youtu.be/WtfaGIdekCk" autocomplete="off">
+        <button onclick="testarAPI()" id="btnTestar">🔧 Testar API</button>
         <button onclick="buscarVideo()" id="btnBuscar">🔍 Analisar Vídeo</button>
 
         <div id="result" style="display: none;">
@@ -24,17 +25,17 @@
             <div id="info" style="color: #94A3B8; font-size: 0.9rem; margin-bottom: 15px;"></div>
             
             <div class="button-group">
-                <button onclick="baixar('video')" class="btn-download-video">
+                <button onclick="baixarMP4()" class="btn-download-video">
                     📥 Baixar MP4
                 </button>
-                <button onclick="baixar('audio')" class="btn-download-audio">
+                <button onclick="baixarMP3()" class="btn-download-audio">
                     🎵 Baixar MP3
                 </button>
             </div>
         </div>
 
-        <div id="loading" style="display:none; margin:15px 0; padding:10px; background:rgba(56,189,248,0.1); border-radius:8px; text-align:center;">
-            ⏳ Processando...
+        <div id="debug" style="display:none; margin:15px 0; padding:10px; background:rgba(56,189,248,0.1); border-radius:8px; font-size:0.8rem;">
+            <strong>Debug Info:</strong> <span id="debugText"></span>
         </div>
 
         <div class="footer">
@@ -49,136 +50,114 @@
     </a>
 
     <script>
-    let currentVideoData = null;
-    
-    async function buscarVideo() {
-        const url = document.getElementById('urlInput').value.trim();
-        if (!url) {
-            alert('Cole um link do YouTube!');
-            return;
-        }
-        
-        showLoading(true);
+    // Teste da API primeiro
+    async function testarAPI() {
+        showDebug("Testando API...");
         
         try {
-            const response = await fetch('/api/get_info', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url })
-            });
+            // Teste 1: Health check
+            const healthRes = await fetch('/api/health');
+            const healthData = await healthRes.json();
+            showDebug(`Health: ${healthRes.status} - ${healthData.status}`);
             
-            const data = await response.json();
+            // Teste 2: Get info com GET
+            const url = document.getElementById('urlInput').value;
+            const infoRes = await fetch(`/api/get_info?url=${encodeURIComponent(url)}`);
+            const infoData = await infoRes.json();
+            showDebug(`Get Info: ${infoRes.status} - ${infoData.success ? 'OK' : 'Erro'}`);
             
-            if (data.success) {
-                currentVideoData = data;
-                
-                document.getElementById('thumb').src = data.thumbnail;
-                document.getElementById('titulo').textContent = data.title;
-                document.getElementById('info').innerHTML = `
-                    Duração: ${data.duration || 'N/A'} | ID: ${data.video_id || 'N/A'}
-                `;
+            if (infoData.success) {
                 document.getElementById('result').style.display = 'block';
-            } else {
-                alert('Erro: ' + (data.error || 'Falha ao analisar vídeo'));
+                document.getElementById('thumb').src = infoData.thumbnail;
+                document.getElementById('titulo').textContent = infoData.title;
             }
             
         } catch (error) {
-            console.error('Erro API:', error);
-            // Fallback: mostrar info básica
-            const videoId = extractVideoId(url);
-            if (videoId) {
-                currentVideoData = { video_id: videoId };
-                document.getElementById('thumb').src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-                document.getElementById('titulo').textContent = 'Vídeo YouTube';
-                document.getElementById('info').innerHTML = `ID: ${videoId}`;
-                document.getElementById('result').style.display = 'block';
-            } else {
-                alert('Não foi possível analisar o vídeo. Tente baixar diretamente.');
-            }
-        } finally {
-            showLoading(false);
+            showDebug(`Erro: ${error.message}`);
         }
     }
     
-    async function baixar(type) {
+    async function buscarVideo() {
         const url = document.getElementById('urlInput').value.trim();
-        if (!url) {
-            alert('Cole um link do YouTube!');
-            return;
-        }
+        if (!url) return alert('Cole uma URL!');
         
-        showLoading(true);
+        showDebug("Buscando vídeo via GET...");
         
-        const endpoint = type === 'video' ? '/download/video' : '/download/audio';
-        
-        // Abrir em nova aba imediatamente
-        const downloadWindow = window.open(`${endpoint}?url=${encodeURIComponent(url)}`, '_blank');
-        
-        // Se popup bloqueado, mostrar alternativa
-        if (!downloadWindow || downloadWindow.closed) {
-            alert('Popup bloqueado! Use o link direto abaixo:');
+        try {
+            // Usar GET em vez de POST
+            const response = await fetch(`/api/get_info?url=${encodeURIComponent(url)}`);
+            const data = await response.json();
             
-            // Tentar obter link via API
-            try {
-                const response = await fetch(`${endpoint}?url=${encodeURIComponent(url)}`);
-                if (response.status === 302) {
-                    const redirectUrl = response.headers.get('Location');
-                    if (redirectUrl) {
-                        document.getElementById('loading').innerHTML = `
-                            <strong>Link direto:</strong><br>
-                            <input type="text" value="${redirectUrl}" readonly style="width:100%; margin:5px 0; padding:5px; border-radius:5px;">
-                            <button onclick="navigator.clipboard.writeText('${redirectUrl}')" style="margin-top:5px; padding:5px 10px; background:#38BDF8; border:none; border-radius:5px; color:white; cursor:pointer;">
-                                Copiar Link
-                            </button>
-                        `;
-                    }
+            if (data.success) {
+                document.getElementById('thumb').src = data.thumbnail;
+                document.getElementById('titulo').textContent = data.title;
+                document.getElementById('info').innerHTML = `Duração: ${data.duration} | ID: ${data.video_id}`;
+                document.getElementById('result').style.display = 'block';
+                showDebug("Sucesso! Dados carregados.");
+            } else {
+                showDebug(`Erro API: ${data.error}`);
+                // Fallback: mostrar thumbnail do YouTube
+                const videoId = extractVideoId(url);
+                if (videoId) {
+                    document.getElementById('thumb').src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+                    document.getElementById('titulo').textContent = 'Vídeo YouTube';
+                    document.getElementById('info').innerHTML = `ID: ${videoId}`;
+                    document.getElementById('result').style.display = 'block';
                 }
-            } catch (e) {
-                console.error('Erro:', e);
             }
+        } catch (error) {
+            showDebug(`Erro de conexão: ${error.message}`);
         }
+    }
+    
+    function baixarMP4() {
+        const url = document.getElementById('urlInput').value.trim();
+        if (!url) return alert('Cole uma URL!');
         
-        setTimeout(() => showLoading(false), 3000);
+        const videoId = extractVideoId(url);
+        if (!videoId) return alert('URL inválida!');
+        
+        // Usar API do Vercel
+        window.open(`/download/video?url=${encodeURIComponent(url)}`, '_blank');
+        showDebug("Redirecionando para download MP4...");
+    }
+    
+    function baixarMP3() {
+        const url = document.getElementById('urlInput').value.trim();
+        if (!url) return alert('Cole uma URL!');
+        
+        const videoId = extractVideoId(url);
+        if (!videoId) return alert('URL inválida!');
+        
+        window.open(`/download/audio?url=${encodeURIComponent(url)}`, '_blank');
+        showDebug("Redirecionando para download MP3...");
     }
     
     function extractVideoId(url) {
         const patterns = [
             /youtu\.be\/([^&\?\/]+)/,
             /youtube\.com\/watch\?v=([^&\?\/]+)/,
-            /youtube\.com\/embed\/([^&\?\/]+)/,
             /v=([^&\?\/]+)/
         ];
         
         for (const pattern of patterns) {
             const match = url.match(pattern);
-            if (match && match[1]) {
-                return match[1];
-            }
+            if (match && match[1]) return match[1];
         }
         return null;
     }
     
-    function showLoading(show) {
-        document.getElementById('loading').style.display = show ? 'block' : 'none';
-        document.getElementById('btnBuscar').disabled = show;
-        
-        if (show) {
-            document.getElementById('btnBuscar').innerHTML = '⏳ Analisando...';
-        } else {
-            document.getElementById('btnBuscar').innerHTML = '🔍 Analisar Vídeo';
-        }
+    function showDebug(message) {
+        document.getElementById('debug').style.display = 'block';
+        document.getElementById('debugText').textContent = message;
+        console.log('DEBUG:', message);
     }
     
-    // Enter para buscar
-    document.getElementById('urlInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            buscarVideo();
-        }
-    });
-    
-    // Auto-focus
+    // Auto-teste ao carregar
     window.addEventListener('load', function() {
-        document.getElementById('urlInput').focus();
+        console.log('Site carregado!');
+        // Teste automático após 2 segundos
+        setTimeout(testarAPI, 2000);
     });
     </script>
 </body>
