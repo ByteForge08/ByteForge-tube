@@ -2,23 +2,19 @@
   "routes": [
     {
       "src": "/api/get_info",
-      "dest": "/api/get_info.py",
-      "methods": ["POST", "GET", "OPTIONS"]
+      "dest": "/api/get_info.py"
     },
     {
       "src": "/download/video",
-      "dest": "/api/download_video.py",
-      "methods": ["GET"]
+      "dest": "/api/download_video.py"
     },
     {
-      "src": "/download/audio", 
-      "dest": "/api/download_audio.py",
-      "methods": ["GET"]
+      "src": "/download/audio",
+      "dest": "/api/download_audio.py"
     },
     {
       "src": "/api/health",
-      "dest": "/api/index.py",
-      "methods": ["GET"]
+      "dest": "/api/index.py"
     },
     {
       "src": "/css/(.*)",
