@@ -4,35 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ByteForgeYT | Download YouTube</title>
-    <!-- CSS CORRETO -->
     <link rel="stylesheet" href="/css/style.css">
-    <!-- Favicon -->
-    <link rel="icon" href="/icon.png" type="image/png">
 </head>
 <body>
     <a href="https://github.com/ByteForge08" target="_blank">
-        <!-- IMAGEM CORRETA -->
         <img src="/icon.png" class="creator-icon" alt="Criador">
     </a>
 
-    <!-- LOGO CORRETA -->
     <img src="/logo.png" class="site-logo" alt="Logo">
 
     <div class="container">
         <input type="text" id="urlInput" placeholder="Cole o link do YouTube aqui..." 
-               value="https://youtu.be/msHKbp8wo8g" autocomplete="off">
+               value="https://www.youtube.com/watch?v=uIuSv7NU2KU" autocomplete="off">
         <button onclick="buscarVideo()" id="btnBuscar">🔍 Analisar Vídeo</button>
 
         <div id="result" style="display: none;">
             <img id="thumb" class="thumb" src="" alt="Thumbnail">
-            <div id="titulo" style="margin: 15px 0; font-weight: bold; font-size: 1.1rem;"></div>
+            <div id="titulo" style="margin: 15px 0; font-weight: bold;"></div>
             <div id="info" style="color: #94A3B8; font-size: 0.9rem; margin-bottom: 15px;"></div>
             
             <div class="button-group">
-                <button onclick="baixarMP4()" class="btn-download-video">
+                <button onclick="baixar('video')" class="btn-download-video">
                     📥 Baixar MP4
                 </button>
-                <button onclick="baixarMP3()" class="btn-download-audio">
+                <button onclick="baixar('audio')" class="btn-download-audio">
                     🎵 Baixar MP3
                 </button>
             </div>
@@ -48,14 +43,14 @@
         </div>
     </div>
 
-    <!-- GITHUB LINK CORRETO -->
     <a href="https://github.com/ByteForge08" target="_blank" class="github-footer-link">
         <img src="/git.png" alt="GitHub">
         <span>ByteForge08</span>
     </a>
 
     <script>
-    // Versão SIMPLIFICADA que funciona
+    let currentVideoData = null;
+    
     async function buscarVideo() {
         const url = document.getElementById('urlInput').value.trim();
         if (!url) {
@@ -64,86 +59,89 @@
         }
         
         showLoading(true);
-        document.getElementById('result').style.display = 'none';
         
         try {
-            // Método 1: API própria
             const response = await fetch('/api/get_info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: url })
             });
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
             const data = await response.json();
             
             if (data.success) {
-                // Mostrar informações
+                currentVideoData = data;
+                
                 document.getElementById('thumb').src = data.thumbnail;
                 document.getElementById('titulo').textContent = data.title;
                 document.getElementById('info').innerHTML = `
-                    Duração: ${data.duration || 'N/A'} | 
-                    ${data.video_id ? `ID: ${data.video_id}` : ''}
+                    Duração: ${data.duration || 'N/A'} | ID: ${data.video_id || 'N/A'}
                 `;
                 document.getElementById('result').style.display = 'block';
             } else {
-                throw new Error(data.error || 'Falha na API');
+                alert('Erro: ' + (data.error || 'Falha ao analisar vídeo'));
             }
             
         } catch (error) {
             console.error('Erro API:', error);
-            
-            // Método 2: Fallback - extrair info manualmente
+            // Fallback: mostrar info básica
             const videoId = extractVideoId(url);
             if (videoId) {
+                currentVideoData = { video_id: videoId };
                 document.getElementById('thumb').src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-                document.getElementById('titulo').textContent = `Vídeo YouTube (${videoId})`;
-                document.getElementById('info').innerHTML = `ID: ${videoId} | Use botões para download`;
+                document.getElementById('titulo').textContent = 'Vídeo YouTube';
+                document.getElementById('info').innerHTML = `ID: ${videoId}`;
                 document.getElementById('result').style.display = 'block';
             } else {
-                alert('Não foi possível analisar o vídeo. Use os botões de download diretamente.');
+                alert('Não foi possível analisar o vídeo. Tente baixar diretamente.');
             }
         } finally {
             showLoading(false);
         }
     }
     
-    function baixarMP4() {
+    async function baixar(type) {
         const url = document.getElementById('urlInput').value.trim();
         if (!url) {
             alert('Cole um link do YouTube!');
             return;
         }
         
-        const videoId = extractVideoId(url);
-        if (videoId) {
-            // Usar serviço externo DIRETO (funciona melhor)
-            window.open(`https://loader.to/api/button/?url=https://youtube.com/watch?v=${videoId}&f=mp4`, '_blank');
-        } else {
-            alert('URL inválida!');
-        }
-    }
-    
-    function baixarMP3() {
-        const url = document.getElementById('urlInput').value.trim();
-        if (!url) {
-            alert('Cole um link do YouTube!');
-            return;
+        showLoading(true);
+        
+        const endpoint = type === 'video' ? '/download/video' : '/download/audio';
+        
+        // Abrir em nova aba imediatamente
+        const downloadWindow = window.open(`${endpoint}?url=${encodeURIComponent(url)}`, '_blank');
+        
+        // Se popup bloqueado, mostrar alternativa
+        if (!downloadWindow || downloadWindow.closed) {
+            alert('Popup bloqueado! Use o link direto abaixo:');
+            
+            // Tentar obter link via API
+            try {
+                const response = await fetch(`${endpoint}?url=${encodeURIComponent(url)}`);
+                if (response.status === 302) {
+                    const redirectUrl = response.headers.get('Location');
+                    if (redirectUrl) {
+                        document.getElementById('loading').innerHTML = `
+                            <strong>Link direto:</strong><br>
+                            <input type="text" value="${redirectUrl}" readonly style="width:100%; margin:5px 0; padding:5px; border-radius:5px;">
+                            <button onclick="navigator.clipboard.writeText('${redirectUrl}')" style="margin-top:5px; padding:5px 10px; background:#38BDF8; border:none; border-radius:5px; color:white; cursor:pointer;">
+                                Copiar Link
+                            </button>
+                        `;
+                    }
+                }
+            } catch (e) {
+                console.error('Erro:', e);
+            }
         }
         
-        const videoId = extractVideoId(url);
-        if (videoId) {
-            window.open(`https://loader.to/api/button/?url=https://youtube.com/watch?v=${videoId}&f=mp3`, '_blank');
-        } else {
-            alert('URL inválida!');
-        }
+        setTimeout(() => showLoading(false), 3000);
     }
     
     function extractVideoId(url) {
-        // Extrair ID do YouTube
         const patterns = [
             /youtu\.be\/([^&\?\/]+)/,
             /youtube\.com\/watch\?v=([^&\?\/]+)/,
@@ -178,11 +176,9 @@
         }
     });
     
-    // Carregar exemplo
+    // Auto-focus
     window.addEventListener('load', function() {
-        console.log('ByteForgeYT carregado!');
-        // Testar CSS
-        console.log('CSS carregado:', document.styleSheets.length > 0);
+        document.getElementById('urlInput').focus();
     });
     </script>
 </body>
