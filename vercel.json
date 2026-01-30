@@ -1,0 +1,60 @@
+{
+  "functions": {
+    "api/get_info.py": {
+      "runtime": "python3.9",
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "api/download_video.py": {
+      "runtime": "python3.9", 
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "api/download_audio.py": {
+      "runtime": "python3.9",
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/get_info",
+      "dest": "/api/get_info.py",
+      "methods": ["POST", "OPTIONS"]
+    },
+    {
+      "src": "/api/download/video",
+      "dest": "/api/download_video.py",
+      "methods": ["GET"]
+    },
+    {
+      "src": "/api/download/audio",
+      "dest": "/api/download_audio.py", 
+      "methods": ["GET"]
+    },
+    {
+      "src": "/api/health",
+      "dest": "/api/index.py",
+      "methods": ["GET"]
+    },
+    {
+      "src": "/css/(.*)",
+      "dest": "/public/css/$1"
+    },
+    {
+      "src": "/js/(.*)",
+      "dest": "/public/js/$1"
+    },
+    {
+      "src": "/(.*\\.(png|jpg|jpeg|gif|ico|svg))",
+      "dest": "/public/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/public/index.html"
+    }
+  ],
+  "env": {
+    "PYTHONUNBUFFERED": "true"
+  }
+}

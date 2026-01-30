@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ByteForgeYT | Download YouTube</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <a href="https://github.com/ByteForge08" target="_blank">
+        <img src="/icon.png" class="creator-icon" alt="Criador">
+    </a>
+
+    <img src="/logo.png" class="site-logo" alt="Logo">
+
+    <div class="container">
+        <input type="text" id="urlInput" placeholder="Cole o link do YouTube aqui...">
+        <button onclick="buscarVideo()" id="btnBuscar">Analisar Vídeo</button>
+
+        <div id="result" style="display: none;">
+            <img id="thumb" class="thumb" src="">
+            <div id="titulo" style="margin: 15px 0; font-weight: bold;"></div>
+            <div id="info" style="color: #94A3B8; font-size: 0.9rem; margin-bottom: 15px;"></div>
+            
+            <div class="button-group">
+                <button onclick="baixarMP4()" class="btn-download-video">
+                    Baixar MP4
+                </button>
+                <button onclick="baixarMP3()" class="btn-download-audio">
+                    Baixar MP3
+                </button>
+            </div>
+            
+            <div id="downloadLinks" style="margin-top: 15px;"></div>
+        </div>
+
+        <div id="loading" style="display:none; margin:15px 0; color:#38BDF8;">
+            ⏳ Processando...
+        </div>
+
+        <div class="footer">
+            <p>Use com responsabilidade. Respeite os direitos autorais.</p>
+            &copy; 2026 <b>ByteForge Dev</b>
+        </div>
+    </div>
+
+    <a href="https://github.com/ByteForge08" target="_blank" class="github-footer-link">
+        <img src="/git.png" alt="GitHub">
+        <span>ByteForge08</span>
+    </a>
+
+    <script>
+    let videoData = null;
+    
+    async function buscarVideo() {
+        const url = document.getElementById('urlInput').value.trim();
+        if (!url) {
+            alert('Cole um link do YouTube!');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetch('/api/get_info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                videoData = data;
+                
+                // Mostrar informações
+                document.getElementById('thumb').src = data.thumbnail;
+                document.getElementById('titulo').textContent = data.title;
+                document.getElementById('info').innerHTML = `
+                    Duração: ${data.duration || 'N/A'} | 
+                    Uploader: ${data.uploader || 'N/A'}
+                `;
+                
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('downloadLinks').innerHTML = '';
+                
+            } else {
+                alert('Erro: ' + (data.error || 'Falha ao analisar vídeo'));
+            }
+            
+        } catch (error) {
+            alert('Erro de conexão: ' + error);
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    async function baixarMP4() {
+        if (!videoData || !document.getElementById('urlInput').value) {
+            alert('Analise um vídeo primeiro!');
+            return;
+        }
+        
+        const url = document.getElementById('urlInput').value;
+        showLoading(true);
+        
+        try {
+            const response = await fetch(`/api/download/video?url=${encodeURIComponent(url)}`);
+            const data = await response.json();
+            
+            if (data.success && data.direct_url) {
+                // Abrir link direto em nova aba
+                window.open(data.direct_url, '_blank');
+            } else {
+                alert(data.error || 'Erro ao obter link de download');
+            }
+        } catch (error) {
+            alert('Erro: ' + error);
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    async function baixarMP3() {
+        if (!videoData || !document.getElementById('urlInput').value) {
+            alert('Analise um vídeo primeiro!');
+            return;
+        }
+        
+        const url = document.getElementById('urlInput').value;
+        showLoading(true);
+        
+        try {
+            const response = await fetch(`/api/download/audio?url=${encodeURIComponent(url)}`);
+            const data = await response.json();
+            
+            if (data.success && data.direct_url) {
+                window.open(data.direct_url, '_blank');
+            } else if (data.external_service) {
+                // Usar serviço externo como fallback
+                window.open(data.external_service, '_blank');
+            } else {
+                alert(data.error || 'Erro ao obter áudio');
+            }
+        } catch (error) {
+            alert('Erro: ' + error);
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    function showLoading(show) {
+        document.getElementById('loading').style.display = show ? 'block' : 'none';
+        document.getElementById('btnBuscar').disabled = show;
+    }
+    
+    // Enter para buscar
+    document.getElementById('urlInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            buscarVideo();
+        }
+    });
+    </script>
+</body>
+</html>
