@@ -14,8 +14,8 @@
     <img src="/logo.png" class="site-logo" alt="Logo">
 
     <div class="container">
-        <input type="text" id="urlInput" placeholder="Cole o link do YouTube aqui...">
-        <button onclick="buscarVideo()" id="btnBuscar">Analisar Vídeo</button>
+        <input type="text" id="urlInput" placeholder="Cole o link do YouTube aqui..." value="https://youtu.be/msHKbp8wo8g">
+        <button onclick="buscarVideo()" id="btnBuscar">🔍 Analisar Vídeo</button>
 
         <div id="result" style="display: none;">
             <img id="thumb" class="thumb" src="">
@@ -24,14 +24,12 @@
             
             <div class="button-group">
                 <button onclick="baixarMP4()" class="btn-download-video">
-                    Baixar MP4
+                    📥 Baixar MP4
                 </button>
                 <button onclick="baixarMP3()" class="btn-download-audio">
-                    Baixar MP3
+                    🎵 Baixar MP3
                 </button>
             </div>
-            
-            <div id="downloadLinks" style="margin-top: 15px;"></div>
         </div>
 
         <div id="loading" style="display:none; margin:15px 0; color:#38BDF8;">
@@ -50,8 +48,6 @@
     </a>
 
     <script>
-    let videoData = null;
-    
     async function buscarVideo() {
         const url = document.getElementById('urlInput').value.trim();
         if (!url) {
@@ -71,82 +67,74 @@
             const data = await response.json();
             
             if (data.success) {
-                videoData = data;
-                
-                // Mostrar informações
                 document.getElementById('thumb').src = data.thumbnail;
                 document.getElementById('titulo').textContent = data.title;
                 document.getElementById('info').innerHTML = `
-                    Duração: ${data.duration || 'N/A'} | 
-                    Uploader: ${data.uploader || 'N/A'}
+                    Duração: ${data.duration || 'N/A'} | ID: ${data.video_id || 'N/A'}
                 `;
-                
                 document.getElementById('result').style.display = 'block';
-                document.getElementById('downloadLinks').innerHTML = '';
-                
             } else {
                 alert('Erro: ' + (data.error || 'Falha ao analisar vídeo'));
             }
             
         } catch (error) {
-            alert('Erro de conexão: ' + error);
+            console.error('Erro:', error);
+            alert('Erro de conexão. Tentando método alternativo...');
+            
+            // Fallback: redirecionar direto
+            const videoId = extractVideoId(url);
+            if (videoId) {
+                window.open(`https://loader.to/api/button/?url=https://youtube.com/watch?v=${videoId}&f=mp4`, '_blank');
+            }
         } finally {
             showLoading(false);
         }
     }
     
-    async function baixarMP4() {
-        if (!videoData || !document.getElementById('urlInput').value) {
-            alert('Analise um vídeo primeiro!');
+    function baixarMP4() {
+        const url = document.getElementById('urlInput').value.trim();
+        if (!url) {
+            alert('Cole um link primeiro!');
             return;
         }
         
-        const url = document.getElementById('urlInput').value;
-        showLoading(true);
-        
-        try {
-            const response = await fetch(`/api/download/video?url=${encodeURIComponent(url)}`);
-            const data = await response.json();
-            
-            if (data.success && data.direct_url) {
-                // Abrir link direto em nova aba
-                window.open(data.direct_url, '_blank');
-            } else {
-                alert(data.error || 'Erro ao obter link de download');
-            }
-        } catch (error) {
-            alert('Erro: ' + error);
-        } finally {
-            showLoading(false);
+        const videoId = extractVideoId(url);
+        if (videoId) {
+            window.open(`/download/video?url=${encodeURIComponent(url)}`, '_blank');
+        } else {
+            alert('URL inválida!');
         }
     }
     
-    async function baixarMP3() {
-        if (!videoData || !document.getElementById('urlInput').value) {
-            alert('Analise um vídeo primeiro!');
+    function baixarMP3() {
+        const url = document.getElementById('urlInput').value.trim();
+        if (!url) {
+            alert('Cole um link primeiro!');
             return;
         }
         
-        const url = document.getElementById('urlInput').value;
-        showLoading(true);
-        
-        try {
-            const response = await fetch(`/api/download/audio?url=${encodeURIComponent(url)}`);
-            const data = await response.json();
-            
-            if (data.success && data.direct_url) {
-                window.open(data.direct_url, '_blank');
-            } else if (data.external_service) {
-                // Usar serviço externo como fallback
-                window.open(data.external_service, '_blank');
-            } else {
-                alert(data.error || 'Erro ao obter áudio');
-            }
-        } catch (error) {
-            alert('Erro: ' + error);
-        } finally {
-            showLoading(false);
+        const videoId = extractVideoId(url);
+        if (videoId) {
+            window.open(`/download/audio?url=${encodeURIComponent(url)}`, '_blank');
+        } else {
+            alert('URL inválida!');
         }
+    }
+    
+    function extractVideoId(url) {
+        const patterns = [
+            /youtu\.be\/([^&\?\/]+)/,
+            /youtube\.com\/watch\?v=([^&\?\/]+)/,
+            /v=([^&\?\/]+)/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+                return match[1];
+            }
+        }
+        return null;
     }
     
     function showLoading(show) {
@@ -159,6 +147,11 @@
         if (e.key === 'Enter') {
             buscarVideo();
         }
+    });
+    
+    // Teste automático
+    window.addEventListener('load', function() {
+        console.log('ByteForgeYT carregado!');
     });
     </script>
 </body>
