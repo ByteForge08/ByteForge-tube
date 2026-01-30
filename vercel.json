@@ -1,18 +1,4 @@
 {
-  "functions": {
-    "api/get_info.py": {
-      "runtime": "python@3.9"
-    },
-    "api/download_video.py": {
-      "runtime": "python@3.9"
-    },
-    "api/download_audio.py": {
-      "runtime": "python@3.9"
-    },
-    "api/index.py": {
-      "runtime": "python@3.9"
-    }
-  },
   "routes": [
     {
       "src": "/api/get_info",
@@ -25,7 +11,7 @@
       "methods": ["GET"]
     },
     {
-      "src": "/download/audio",
+      "src": "/download/audio", 
       "dest": "/api/download_audio.py",
       "methods": ["GET"]
     },
