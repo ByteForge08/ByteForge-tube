@@ -4,22 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ByteForgeYT | Download YouTube</title>
+    <!-- CSS CORRETO -->
     <link rel="stylesheet" href="/css/style.css">
+    <!-- Favicon -->
+    <link rel="icon" href="/icon.png" type="image/png">
 </head>
 <body>
     <a href="https://github.com/ByteForge08" target="_blank">
+        <!-- IMAGEM CORRETA -->
         <img src="/icon.png" class="creator-icon" alt="Criador">
     </a>
 
+    <!-- LOGO CORRETA -->
     <img src="/logo.png" class="site-logo" alt="Logo">
 
     <div class="container">
-        <input type="text" id="urlInput" placeholder="Cole o link do YouTube aqui..." value="https://youtu.be/msHKbp8wo8g">
+        <input type="text" id="urlInput" placeholder="Cole o link do YouTube aqui..." 
+               value="https://youtu.be/msHKbp8wo8g" autocomplete="off">
         <button onclick="buscarVideo()" id="btnBuscar">🔍 Analisar Vídeo</button>
 
         <div id="result" style="display: none;">
-            <img id="thumb" class="thumb" src="">
-            <div id="titulo" style="margin: 15px 0; font-weight: bold;"></div>
+            <img id="thumb" class="thumb" src="" alt="Thumbnail">
+            <div id="titulo" style="margin: 15px 0; font-weight: bold; font-size: 1.1rem;"></div>
             <div id="info" style="color: #94A3B8; font-size: 0.9rem; margin-bottom: 15px;"></div>
             
             <div class="button-group">
@@ -32,7 +38,7 @@
             </div>
         </div>
 
-        <div id="loading" style="display:none; margin:15px 0; color:#38BDF8;">
+        <div id="loading" style="display:none; margin:15px 0; padding:10px; background:rgba(56,189,248,0.1); border-radius:8px; text-align:center;">
             ⏳ Processando...
         </div>
 
@@ -42,12 +48,14 @@
         </div>
     </div>
 
+    <!-- GITHUB LINK CORRETO -->
     <a href="https://github.com/ByteForge08" target="_blank" class="github-footer-link">
         <img src="/git.png" alt="GitHub">
         <span>ByteForge08</span>
     </a>
 
     <script>
+    // Versão SIMPLIFICADA que funciona
     async function buscarVideo() {
         const url = document.getElementById('urlInput').value.trim();
         if (!url) {
@@ -56,35 +64,47 @@
         }
         
         showLoading(true);
+        document.getElementById('result').style.display = 'none';
         
         try {
+            // Método 1: API própria
             const response = await fetch('/api/get_info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: url })
             });
             
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
             const data = await response.json();
             
             if (data.success) {
+                // Mostrar informações
                 document.getElementById('thumb').src = data.thumbnail;
                 document.getElementById('titulo').textContent = data.title;
                 document.getElementById('info').innerHTML = `
-                    Duração: ${data.duration || 'N/A'} | ID: ${data.video_id || 'N/A'}
+                    Duração: ${data.duration || 'N/A'} | 
+                    ${data.video_id ? `ID: ${data.video_id}` : ''}
                 `;
                 document.getElementById('result').style.display = 'block';
             } else {
-                alert('Erro: ' + (data.error || 'Falha ao analisar vídeo'));
+                throw new Error(data.error || 'Falha na API');
             }
             
         } catch (error) {
-            console.error('Erro:', error);
-            alert('Erro de conexão. Tentando método alternativo...');
+            console.error('Erro API:', error);
             
-            // Fallback: redirecionar direto
+            // Método 2: Fallback - extrair info manualmente
             const videoId = extractVideoId(url);
             if (videoId) {
-                window.open(`https://loader.to/api/button/?url=https://youtube.com/watch?v=${videoId}&f=mp4`, '_blank');
+                document.getElementById('thumb').src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+                document.getElementById('titulo').textContent = `Vídeo YouTube (${videoId})`;
+                document.getElementById('info').innerHTML = `ID: ${videoId} | Use botões para download`;
+                document.getElementById('result').style.display = 'block';
+            } else {
+                alert('Não foi possível analisar o vídeo. Use os botões de download diretamente.');
             }
         } finally {
             showLoading(false);
@@ -94,13 +114,14 @@
     function baixarMP4() {
         const url = document.getElementById('urlInput').value.trim();
         if (!url) {
-            alert('Cole um link primeiro!');
+            alert('Cole um link do YouTube!');
             return;
         }
         
         const videoId = extractVideoId(url);
         if (videoId) {
-            window.open(`/download/video?url=${encodeURIComponent(url)}`, '_blank');
+            // Usar serviço externo DIRETO (funciona melhor)
+            window.open(`https://loader.to/api/button/?url=https://youtube.com/watch?v=${videoId}&f=mp4`, '_blank');
         } else {
             alert('URL inválida!');
         }
@@ -109,22 +130,24 @@
     function baixarMP3() {
         const url = document.getElementById('urlInput').value.trim();
         if (!url) {
-            alert('Cole um link primeiro!');
+            alert('Cole um link do YouTube!');
             return;
         }
         
         const videoId = extractVideoId(url);
         if (videoId) {
-            window.open(`/download/audio?url=${encodeURIComponent(url)}`, '_blank');
+            window.open(`https://loader.to/api/button/?url=https://youtube.com/watch?v=${videoId}&f=mp3`, '_blank');
         } else {
             alert('URL inválida!');
         }
     }
     
     function extractVideoId(url) {
+        // Extrair ID do YouTube
         const patterns = [
             /youtu\.be\/([^&\?\/]+)/,
             /youtube\.com\/watch\?v=([^&\?\/]+)/,
+            /youtube\.com\/embed\/([^&\?\/]+)/,
             /v=([^&\?\/]+)/
         ];
         
@@ -140,6 +163,12 @@
     function showLoading(show) {
         document.getElementById('loading').style.display = show ? 'block' : 'none';
         document.getElementById('btnBuscar').disabled = show;
+        
+        if (show) {
+            document.getElementById('btnBuscar').innerHTML = '⏳ Analisando...';
+        } else {
+            document.getElementById('btnBuscar').innerHTML = '🔍 Analisar Vídeo';
+        }
     }
     
     // Enter para buscar
@@ -149,9 +178,11 @@
         }
     });
     
-    // Teste automático
+    // Carregar exemplo
     window.addEventListener('load', function() {
         console.log('ByteForgeYT carregado!');
+        // Testar CSS
+        console.log('CSS carregado:', document.styleSheets.length > 0);
     });
     </script>
 </body>
