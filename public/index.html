@@ -16,26 +16,36 @@
     <div class="container">
         <input type="text" id="urlInput" placeholder="Cole o link do YouTube aqui..." 
                value="https://youtu.be/WtfaGIdekCk" autocomplete="off">
-        <button onclick="testarAPI()" id="btnTestar">🔧 Testar API</button>
-        <button onclick="buscarVideo()" id="btnBuscar">🔍 Analisar Vídeo</button>
+        
+        <div class="button-group">
+            <button onclick="baixarMP4()" class="btn-download-video">
+                📥 Baixar MP4 (Direto)
+            </button>
+            <button onclick="baixarMP3()" class="btn-download-audio">
+                🎵 Baixar MP3 (Direto)
+            </button>
+        </div>
 
-        <div id="result" style="display: none;">
-            <img id="thumb" class="thumb" src="" alt="Thumbnail">
-            <div id="titulo" style="margin: 15px 0; font-weight: bold;"></div>
-            <div id="info" style="color: #94A3B8; font-size: 0.9rem; margin-bottom: 15px;"></div>
-            
-            <div class="button-group">
-                <button onclick="baixarMP4()" class="btn-download-video">
-                    📥 Baixar MP4
+        <div style="margin-top: 20px; font-size: 0.9rem; color: #94A3B8;">
+            <p><strong>Serviços disponíveis:</strong></p>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                <button class="service-btn" onclick="usarServico('onlinevideoconverter', 'mp4')">
+                    onlinevideoconverter.pro (MP4)
                 </button>
-                <button onclick="baixarMP3()" class="btn-download-audio">
-                    🎵 Baixar MP3
+                <button class="service-btn" onclick="usarServico('onlinevideoconverter', 'mp3')">
+                    onlinevideoconverter.pro (MP3)
+                </button>
+                <button class="service-btn" onclick="usarServico('ssyoutube', 'mp4')">
+                    ssyoutube.com (MP4)
+                </button>
+                <button class="service-btn" onclick="usarServico('ssyoutube', 'mp3')">
+                    ssyoutube.com (MP3)
                 </button>
             </div>
         </div>
 
-        <div id="debug" style="display:none; margin:15px 0; padding:10px; background:rgba(56,189,248,0.1); border-radius:8px; font-size:0.8rem;">
-            <strong>Debug Info:</strong> <span id="debugText"></span>
+        <div id="status" style="display:none; margin-top:15px; padding:10px; background:rgba(56,189,248,0.1); border-radius:8px; text-align:center;">
+            Redirecionando...
         </div>
 
         <div class="footer">
@@ -50,115 +60,131 @@
     </a>
 
     <script>
-    // Teste da API primeiro
-    async function testarAPI() {
-        showDebug("Testando API...");
-        
-        try {
-            // Teste 1: Health check
-            const healthRes = await fetch('/api/health');
-            const healthData = await healthRes.json();
-            showDebug(`Health: ${healthRes.status} - ${healthData.status}`);
-            
-            // Teste 2: Get info com GET
-            const url = document.getElementById('urlInput').value;
-            const infoRes = await fetch(`/api/get_info?url=${encodeURIComponent(url)}`);
-            const infoData = await infoRes.json();
-            showDebug(`Get Info: ${infoRes.status} - ${infoData.success ? 'OK' : 'Erro'}`);
-            
-            if (infoData.success) {
-                document.getElementById('result').style.display = 'block';
-                document.getElementById('thumb').src = infoData.thumbnail;
-                document.getElementById('titulo').textContent = infoData.title;
-            }
-            
-        } catch (error) {
-            showDebug(`Erro: ${error.message}`);
+    // Serviços que FUNCIONAM (sem bloqueio)
+    const SERVICOS = {
+        onlinevideoconverter: {
+            mp4: (id) => `https://onlinevideoconverter.pro/pt/youtube-converter?v=${id}&t=mp4`,
+            mp3: (id) => `https://onlinevideoconverter.pro/pt/youtube-converter?v=${id}&t=mp3`
+        },
+        ssyoutube: {
+            mp4: (id) => `https://ssyoutube.com/pt20mp4?v=${id}`,
+            mp3: (id) => `https://ssyoutube.com/pt20mp3?v=${id}`
+        },
+        y2mate: {
+            mp4: (id) => `https://en.y2mate.com/youtube/${id}`,
+            mp3: (id) => `https://en.y2mate.com/youtube-mp3/${id}`
         }
-    }
-    
-    async function buscarVideo() {
-        const url = document.getElementById('urlInput').value.trim();
-        if (!url) return alert('Cole uma URL!');
+    };
+
+    function extrairVideoId(url) {
+        if (!url) return null;
         
-        showDebug("Buscando vídeo via GET...");
-        
-        try {
-            // Usar GET em vez de POST
-            const response = await fetch(`/api/get_info?url=${encodeURIComponent(url)}`);
-            const data = await response.json();
-            
-            if (data.success) {
-                document.getElementById('thumb').src = data.thumbnail;
-                document.getElementById('titulo').textContent = data.title;
-                document.getElementById('info').innerHTML = `Duração: ${data.duration} | ID: ${data.video_id}`;
-                document.getElementById('result').style.display = 'block';
-                showDebug("Sucesso! Dados carregados.");
-            } else {
-                showDebug(`Erro API: ${data.error}`);
-                // Fallback: mostrar thumbnail do YouTube
-                const videoId = extractVideoId(url);
-                if (videoId) {
-                    document.getElementById('thumb').src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-                    document.getElementById('titulo').textContent = 'Vídeo YouTube';
-                    document.getElementById('info').innerHTML = `ID: ${videoId}`;
-                    document.getElementById('result').style.display = 'block';
-                }
-            }
-        } catch (error) {
-            showDebug(`Erro de conexão: ${error.message}`);
+        // Padrões de URL do YouTube
+        if (url.includes('youtu.be/')) {
+            return url.split('youtu.be/')[1].split('?')[0];
         }
-    }
-    
-    function baixarMP4() {
-        const url = document.getElementById('urlInput').value.trim();
-        if (!url) return alert('Cole uma URL!');
-        
-        const videoId = extractVideoId(url);
-        if (!videoId) return alert('URL inválida!');
-        
-        // Usar API do Vercel
-        window.open(`/download/video?url=${encodeURIComponent(url)}`, '_blank');
-        showDebug("Redirecionando para download MP4...");
-    }
-    
-    function baixarMP3() {
-        const url = document.getElementById('urlInput').value.trim();
-        if (!url) return alert('Cole uma URL!');
-        
-        const videoId = extractVideoId(url);
-        if (!videoId) return alert('URL inválida!');
-        
-        window.open(`/download/audio?url=${encodeURIComponent(url)}`, '_blank');
-        showDebug("Redirecionando para download MP3...");
-    }
-    
-    function extractVideoId(url) {
-        const patterns = [
-            /youtu\.be\/([^&\?\/]+)/,
-            /youtube\.com\/watch\?v=([^&\?\/]+)/,
-            /v=([^&\?\/]+)/
-        ];
-        
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) return match[1];
+        if (url.includes('youtube.com/watch?v=')) {
+            return url.split('v=')[1].split('&')[0];
         }
+        if (url.includes('v=')) {
+            return url.split('v=')[1].split('&')[0];
+        }
+        
         return null;
     }
-    
-    function showDebug(message) {
-        document.getElementById('debug').style.display = 'block';
-        document.getElementById('debugText').textContent = message;
-        console.log('DEBUG:', message);
+
+    function baixarMP4() {
+        const url = document.getElementById('urlInput').value.trim();
+        const videoId = extrairVideoId(url);
+        
+        if (!videoId) {
+            alert('URL do YouTube inválida!');
+            return;
+        }
+        
+        mostrarStatus(`Abrindo serviços MP4 para: ${videoId}`);
+        
+        // Abrir múltiplos serviços (algum vai funcionar)
+        Object.values(SERVICOS).forEach(servico => {
+            if (servico.mp4) {
+                window.open(servico.mp4(videoId), '_blank');
+            }
+        });
     }
-    
-    // Auto-teste ao carregar
-    window.addEventListener('load', function() {
-        console.log('Site carregado!');
-        // Teste automático após 2 segundos
-        setTimeout(testarAPI, 2000);
+
+    function baixarMP3() {
+        const url = document.getElementById('urlInput').value.trim();
+        const videoId = extrairVideoId(url);
+        
+        if (!videoId) {
+            alert('URL do YouTube inválida!');
+            return;
+        }
+        
+        mostrarStatus(`Abrindo serviços MP3 para: ${videoId}`);
+        
+        Object.values(SERVICOS).forEach(servico => {
+            if (servico.mp3) {
+                window.open(servico.mp3(videoId), '_blank');
+            }
+        });
+    }
+
+    function usarServico(servicoNome, tipo) {
+        const url = document.getElementById('urlInput').value.trim();
+        const videoId = extrairVideoId(url);
+        
+        if (!videoId) {
+            alert('Cole uma URL do YouTube primeiro!');
+            return;
+        }
+        
+        const servico = SERVICOS[servicoNome];
+        if (servico && servico[tipo]) {
+            mostrarStatus(`Abrindo ${servicoNome} (${tipo})...`);
+            window.open(servico[tipo](videoId), '_blank');
+        }
+    }
+
+    function mostrarStatus(mensagem) {
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = mensagem;
+        statusEl.style.display = 'block';
+        
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+        }, 3000);
+    }
+
+    // Enter para baixar MP4
+    document.getElementById('urlInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            baixarMP4();
+        }
     });
+
+    // CSS adicional para botões de serviço
+    const style = document.createElement('style');
+    style.textContent = `
+        .service-btn {
+            padding: 8px 12px;
+            background: #334E68;
+            border: 1px solid #38BDF8;
+            border-radius: 8px;
+            color: #F1F5F9;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 150px;
+        }
+        .service-btn:hover {
+            background: #38BDF8;
+            color: #1A2B3A;
+            transform: translateY(-2px);
+        }
+    `;
+    document.head.appendChild(style);
     </script>
 </body>
 </html>
