@@ -1,6 +1,22 @@
 {
   "routes": [
     {
+      "src": "/static/(.*)",
+      "dest": "/public/$1"
+    },
+    {
+      "src": "/css/(.*)",
+      "dest": "/public/css/$1"
+    },
+    {
+      "src": "/js/(.*)",
+      "dest": "/public/js/$1"
+    },
+    {
+      "src": "/(.*\\.(png|jpg|jpeg|gif|ico|svg))",
+      "dest": "/public/$1"
+    },
+    {
       "src": "/api/get_info",
       "dest": "/api/get_info.py"
     },
@@ -15,18 +31,6 @@
     {
       "src": "/api/health",
       "dest": "/api/index.py"
-    },
-    {
-      "src": "/css/(.*)",
-      "dest": "/public/css/$1"
-    },
-    {
-      "src": "/js/(.*)",
-      "dest": "/public/js/$1"
-    },
-    {
-      "src": "/(.*\\.(png|jpg|jpeg|gif|ico|svg))",
-      "dest": "/public/$1"
     },
     {
       "src": "/",
